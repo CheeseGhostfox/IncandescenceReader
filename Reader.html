@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>IncandescenceReader</title>
+    <style>
+        :root { --border: #2f3336; --text-gray: #71767b; --x-blue: #1d9bf0; }
+        body { background: #000; color: #e7e9ea; font-family: sans-serif; margin: 0; overflow-x: hidden; }
+
+        /* 主体布局 */
+        .app { max-width: 600px; margin: 0 auto; border-left: 1px solid var(--border); border-right: 1px solid var(--border); min-height: 100vh; position: relative; background: #000; }
+
+        /* 侧边栏样式 */
+        .sidebar { position: fixed; top: 100px; width: 220px; color: var(--text-gray); font-size: 14px; line-height: 1.6; }
+        .sidebar h3 { color: #fff; font-size: 16px; margin-bottom: 10px; }
+
+        /* 左侧：署名栏 */
+        .sidebar-left { left: calc(50% - 300px - 250px); text-align: right; border-right: 2px solid var(--border); padding-right: 20px; }
+
+        /* 右侧：教程栏 */
+        .sidebar-right { right: calc(50% - 300px - 250px); text-align: left; border-left: 2px solid var(--border); padding-left: 20px; }
+        .sidebar img { width: 100%; border-radius: 8px; margin-top: 10px; border: 1px solid var(--border); }
+
+        /* 搜索与个人资料样式保持不变... */
+        .profile-header { border-bottom: 1px solid var(--border); }
+        .banner { width: 100%; height: 200px; background: #333; object-fit: cover; }
+        .profile-info { padding: 12px 16px; position: relative; }
+        .avatar-img { width: 80px; height: 80px; border-radius: 50%; border: 4px solid #000; position: absolute; top: -45px; background: #222; }
+        .profile-names { margin-top: 40px; }
+        .p-name { font-size: 20px; font-weight: 800; display: block; }
+        .p-user { color: var(--text-gray); font-size: 15px; }
+        .p-bio { margin: 12px 0; font-size: 15px; }
+
+        /* 新增：位置与链接样式 */
+        .p-meta { color: var(--text-gray); font-size: 14px; display: flex; gap: 15px; flex-wrap: wrap; }
+        .p-meta span { display: flex; align-items: center; gap: 4px; }
+        .p-meta a { color: var(--x-blue); text-decoration: none; }
+        .p-meta a:hover { text-decoration: underline; }
+
+        .search-area { padding: 10px 16px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); z-index: 10; }
+        .search-inner { background: #202327; border-radius: 999px; padding: 8px 16px; }
+        #search { background: transparent; border: none; color: #fff; width: 100%; outline: none; }
+
+        .post-card { border-bottom: 1px solid var(--border); cursor: pointer; }
+        .post-card img { width: 100%; display: block; height: auto; background: #000; }
+        .post-date { padding: 8px 16px; font-size: 13px; color: var(--text-gray); }
+
+        /* 详情页优化：解决滚动位置丢失 */
+        #detail-view { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 100; }
+        iframe { width: 100%; height: calc(100% - 60px); border: none; background: #fff; } /* 详情页内部通常是白色的存档 */
+        .back-btn { height: 60px; line-height: 60px; padding: 0 20px; color: var(--x-blue); cursor: pointer; font-weight: bold; border-bottom: 1px solid var(--border); background: #000; }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar sidebar-left">
+        <h3>IncandescenceReader</h3>
+        <h3>「白炽阅读器」</h3>
+         <p style="margin-top:20px;"><b>By Kiriakigawa Nozomi</b><br>AKA 芝士灵狐</p>
+        <p>谨以此工具纪念@AnIncandescence</p>
+        <p>在此对向此项目作出贡献的协助者<br>致以最崇高的敬意与诚挚的感谢</p>
+
+        <div style="margin-top: 30px; border-top: 1px solid var(--border); padding-top: 15px;">
+            <p style="margin-bottom: 8px;"><b> 当前数据库目录</b></p>
+            <input type="text" id="db-folder" value="TestArchive" style="width: 120px; padding: 6px; background: #202327; border: 1px solid #333; color: white; border-radius: 4px;">
+            <button onclick="loadDatabase()" style="padding: 6px 12px; background: var(--x-blue); color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 8px; width: 100%; font-weight: bold;">重新加载</button>
+        </div>
+    </div>
+
+    <div class="sidebar sidebar-right">
+        <h3>使用指南</h3>
+        <p>1. <b>搜索</b>：支持关键词、日期检索。<br>
+           2. <b>浏览</b>：点击图片可查看原始推文及交互内容。<br>
+           3. <b>性能</b>：采用本地预览图与索引加载以减轻性能负担</p>
+        <p style="font-size:12px; margin-top:10px;">* 所有内容均来自本地存档</p>
+    </div>
+
+     <div class="app">
+        <div class="profile-header">
+            <img class="banner" id="p-banner">
+            <div class="profile-info">
+                <img class="avatar-img" id="p-avatar">
+                <div class="profile-names">
+                    <span class="p-name" id="p-name">Loading...</span>
+                    <span class="p-user" id="p-username">@handle</span>
+                </div>
+                <div class="p-bio" id="p-bio"></div>
+                <div class="p-meta">
+                    <span id="p-loc"></span>
+                    <span id="p-link"></span>
+                </div>
+            </div>
+        </div>
+
+
+        <div class="search-area">
+            <div class="search-inner"><input type="text" id="search" placeholder="搜索关键词或日期..."></div>
+        </div>
+        <div id="list"></div>
+    </div>
+
+    <div id="detail-view">
+        <div class="back-btn" onclick="closeDetail()">← 返回</div>
+        <iframe id="viewer"></iframe>
+    </div>
+
+<script>
+    let db = [];
+    let lastScrollY = 0;
+    let currentDB = 'TestArchive'; // 默认读取 TestArchive 文件夹
+
+    // 初始化时加载一次
+    loadDatabase();
+
+    // 核心函数：根据指定的文件夹加载数据
+    function loadDatabase() {
+        // 获取用户输入的文件夹名称（去除两端空格和可能多余的斜杠）
+        currentDB = document.getElementById('db-folder').value.trim().replace(/\/$/, "");
+        if (!currentDB) currentDB = 'TestArchive';
+
+        document.getElementById('list').innerHTML = '<div style="text-align:center; padding:20px; color:#71767b;">正在加载数据库...</div>';
+
+        // 1. 动态加载个人资料
+        fetch(`${currentDB}/profile.json`)
+            .then(r => {
+                if (!r.ok) throw new Error("找不到 profile.json");
+                return r.json();
+            })
+            .then(conf => {
+                document.getElementById('p-name').innerText = conf.name;
+                document.getElementById('p-username').innerText = conf.username;
+                document.getElementById('p-bio').innerText = conf.bio;
+                // 注意这里的路径也要带上 currentDB 前缀
+                document.getElementById('p-avatar').src = `${currentDB}/${conf.avatar}`;
+                document.getElementById('p-banner').src = `${currentDB}/${conf.banner}`;
+
+                if(conf.location) {
+                    document.getElementById('p-loc').innerHTML = `📍 ${conf.location}`;
+                } else {
+                    document.getElementById('p-loc').innerHTML = '';
+                }
+
+                if(conf.link) {
+                    const displayLink = conf.link.replace(/^https?:\/\//, '');
+                    document.getElementById('p-link').innerHTML = `🔗 <a href="${conf.link}" target="_blank">${displayLink}</a>`;
+                } else {
+                    document.getElementById('p-link').innerHTML = '';
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert(`无法加载 ${currentDB}/profile.json，请检查文件夹名称是否正确！`);
+            });
+
+        // 2. 动态加载推文索引
+        fetch(`${currentDB}/index.json`)
+            .then(r => {
+                if (!r.ok) throw new Error("找不到 index.json");
+                return r.json();
+            })
+            .then(data => {
+                db = data.sort((a,b) => b.date.localeCompare(a.date));
+                render(db);
+            })
+            .catch(err => {
+                console.error(err);
+                document.getElementById('list').innerHTML = `<div style="text-align:center; padding:20px; color:red;">加载失败: 找不到 ${currentDB}/index.json</div>`;
+            });
+    }
+
+    function render(items) {
+        document.getElementById('list').innerHTML = items.map(item => `
+            <div class="post-card" onclick="openDetail('${item.id}')">
+                <img src="${currentDB}/previews/${item.preview}" loading="lazy">
+                <div class="post-date">${item.date}</div>
+            </div>
+        `).join('');
+    }
+
+    document.getElementById('search').oninput = (e) => {
+        const kw = e.target.value.toLowerCase();
+        render(db.filter(i => (i.text && i.text.toLowerCase().includes(kw)) || i.date.includes(kw)));
+    };
+
+    function openDetail(id) {
+        lastScrollY = window.scrollY;
+        // 详情页 HTML 路径动态拼接
+        document.getElementById('viewer').src = `${currentDB}/html/${id}`;
+        document.getElementById('detail-view').style.display = 'block';
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeDetail() {
+        document.getElementById('detail-view').style.display = 'none';
+        document.getElementById('viewer').src = '';
+        document.body.style.overflow = 'auto';
+        window.scrollTo(0, lastScrollY);
+    }
+</script>
+</body>
+</html>
