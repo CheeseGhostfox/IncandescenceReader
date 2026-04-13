@@ -1,8 +1,0 @@
-[
-  {
-    "id": "Test.html",
-    "date": "1989-04-05",
-    "text": "     Wayback Machine - Test Sample              LuminaArchivea       @LuminaArchivea7853         这是一个用于测试本地阅读器的示例推文。      它包含了文字、图片、视频以及引用推文的结构，用于在接收分发时确保所有解析脚本和前端 UI 都能正确渲染多媒体内容与时间戳。                 CelestiaRelicta           @CelestiaRelicta0401           这是一条被引用的测试推文，用于测试嵌套结构的解析是否正常工作。Testing quot",
-    "preview": "Test.html.jpg"
-  }
-]
