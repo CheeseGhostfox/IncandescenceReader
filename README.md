@@ -1,0 +1,2 @@
+先运行pre_process.py,选择档案目录(对于自带的测试目录来说就是TestArchive),等待构建处理完成
+然后运行Reader.html,在左侧输入您想浏览的档案目录名称(档案目录文件夹必须与Reader.html在同一目录下)
